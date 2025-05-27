@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : localhost:3306
--- Généré le : mar. 27 mai 2025 à 10:55
+-- Généré le : mar. 27 mai 2025 à 11:08
 -- Version du serveur : 8.4.3
 -- Version de PHP : 8.3.16
 
@@ -47,6 +47,8 @@ CREATE TABLE `demand` (
   `date_finish` datetime DEFAULT NULL,
   `ispublic` tinyint(1) DEFAULT '0',
   `number` int DEFAULT NULL,
+  `group_size` int DEFAULT NULL,
+  `group_number` int DEFAULT NULL,
   `istreated` tinyint(1) DEFAULT '0',
   `repartition_score` float DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
