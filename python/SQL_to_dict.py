@@ -1,27 +1,36 @@
 import mysql.connector
-def fetch_data_from_db(host, user, password, database, query):
-    try:
-        # Establish a database connection
-        connection = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database
-        )
-        
-        cursor = connection.cursor(dictionary=True)  # Use dictionary cursor to get results as dict
-        cursor.execute(query)
-        
-        # Fetch all rows from the executed query
-        results = cursor.fetchall()
-        
-        return results
+
+try:
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database="clusterprojectbdd"
+    )
     
-    except mysql.connector.Error as err:
-        print(f"Error: {err}")
-        return None
+    print("✅ connection established")
     
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+    cursor = conn.cursor()
+    def sql_to_dict(id_demand):
+        cursor.execute("SELECT a.id_user, b.id_user2 FROM answer_student a JOIN user_answer b ON b.id_answer = a.id_answer WHERE a.id_demand = " +  str(id_demand) + " AND a.ignore_student != 1 ORDER BY a.id_user ASC, b.affinity DESC;")
+        tables = cursor.fetchall()
+        
+        dictionnary = {}
+        for key, value in tables:
+            if key not in dictionnary:
+                dictionnary[key] = []
+            dictionnary[key].append(value)
+    
+        return dictionnary
+    
+    print(sql_to_dict(1))
+
+except mysql.connector.Error as err:
+    print(f"❌ error : {err}")
+    
+finally:
+    if 'cursor' in locals():
+        cursor.close()
+    if 'conn' in locals():
+        conn.close()
+        print("\n🔒 close connection")
