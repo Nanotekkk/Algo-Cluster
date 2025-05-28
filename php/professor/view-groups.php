@@ -1,4 +1,5 @@
 <?php
+
 // professor/view-groups.php
 session_start();
 
@@ -237,39 +238,64 @@ if(isset($_GET['id']) && is_numeric($_GET['id'])) {
             padding: 3rem;
             color: #6c757d;
         }
-        
-        .export-btn {
-            background-color: #28a745;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            text-decoration: none;
-            border-radius: 4px;
-            display: inline-block;
-            margin-bottom: 1.5rem;
-            transition: background-color 0.3s;
-        }
-        
-        .export-btn:hover {
-            background-color: #218838;
-        }
-        
-        .stats-box {
-            background-color: #e9ecef;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            gap: 2rem;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Cluster Project - Groupes</h1>
+        <div class="nav-links">
+            <a href="../dashboard.php">Dashboard</a>
+            <a href="../logout.php">Logout</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="content-box">
+            <h2>Vos demandes traitées</h2>
+            <div class="demands-list">
+                <?php foreach ($demands as $demand): ?>
+                    <div class="demand-card <?= isset($selected_demand) && $selected_demand['id_demand'] == $demand['id_demand'] ? 'active' : '' ?>">
+                        <div class="demand-info">
+                            <h3><?= htmlspecialchars($demand['title']) ?></h3>
+                            <p class="demand-meta">Date de fin : <?= htmlspecialchars($demand['date_finish']) ?></p>
+                            <p class="demand-meta">Nombre de groupes : <?= htmlspecialchars($demand['nb_groups']) ?></p>
+                        </div>
+                        <a class="view-btn" href="?id=<?= $demand['id_demand'] ?>">Voir les groupes</a>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <?php if ($selected_demand): ?>
+            <div class="content-box">
+                <h2>Groupes pour la demande : <?= htmlspecialchars($selected_demand['title']) ?></h2>
+                <?php if (!empty($groups)): ?>
+                    <div class="groups-grid">
+                        <?php foreach ($groups as $group): ?>
+                            <div class="group-card">
+                                <div class="group-header">
+                                    <span class="group-name"><?= htmlspecialchars($group['group_name']) ?></span>
+                                    <span class="group-size"><?= htmlspecialchars($group['size']) ?> membres</span>
+                                </div>
+                                <ul class="members-list">
+                                    <?php 
+                                    $members = explode(', ', $group['members']);
+                                    $emails = explode(', ', $group['emails']);
+                                    foreach ($members as $index => $member): ?>
+                                        <li>
+                                            <span class="member-name"><?= htmlspecialchars($member) ?></span>
+                                            <br>
+                                            <span class="member-email"><?= htmlspecialchars($emails[$index]) ?></span>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">Aucun groupe trouvé pour cette demande.</div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</body>
+</html>
