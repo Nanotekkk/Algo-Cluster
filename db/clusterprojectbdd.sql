@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 28, 2025 at 07:17 AM
+-- Generation Time: May 28, 2025 at 10:55 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.3.2
 
@@ -31,41 +31,51 @@ CREATE TABLE `answer_student` (
   `id_answer` int NOT NULL,
   `id_user` int NOT NULL,
   `id_demand` int NOT NULL,
-  `ignore_student` tinyint(1) DEFAULT '0'
+  `ignore_student` tinyint(1) DEFAULT '0',
+  `as_answer` tinyint(1) DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `answer_student`
 --
 
-INSERT INTO `answer_student` (`id_answer`, `id_user`, `id_demand`, `ignore_student`) VALUES
-(1, 1, 1, 0),
-(2, 2, 1, 0),
-(3, 3, 1, 0),
-(4, 4, 1, 0),
-(5, 5, 1, 0),
-(6, 6, 1, 0),
-(7, 7, 1, 0),
-(8, 8, 1, 0),
-(9, 9, 1, 0),
-(10, 10, 1, 0),
-(11, 11, 1, 0),
-(12, 12, 1, 0),
-(13, 13, 1, 0),
-(14, 14, 1, 0),
-(15, 15, 1, 0),
-(16, 16, 1, 0),
-(17, 17, 1, 0),
-(18, 18, 1, 0),
-(19, 19, 1, 0),
-(20, 20, 1, 0),
-(21, 21, 1, 0),
-(22, 22, 1, 0),
-(23, 23, 1, 0),
-(24, 24, 1, 0),
-(25, 25, 1, 0),
-(26, 26, 1, 0),
-(27, 27, 1, 0);
+INSERT INTO `answer_student` (`id_answer`, `id_user`, `id_demand`, `ignore_student`, `as_answer`) VALUES
+(1, 1, 1, 0, 0),
+(2, 2, 1, 0, 1),
+(3, 3, 1, 0, 0),
+(4, 4, 1, 0, 0),
+(5, 5, 1, 0, 0),
+(6, 6, 1, 0, 0),
+(7, 7, 1, 0, 0),
+(8, 8, 1, 0, 0),
+(9, 9, 1, 0, 0),
+(10, 10, 1, 0, 0),
+(11, 11, 1, 0, 0),
+(12, 12, 1, 0, 0),
+(13, 13, 1, 0, 0),
+(14, 14, 1, 0, 0),
+(15, 15, 1, 0, 0),
+(16, 16, 1, 0, 0),
+(17, 17, 1, 0, 0),
+(18, 18, 1, 0, 0),
+(19, 19, 1, 0, 0),
+(20, 20, 1, 0, 0),
+(21, 21, 1, 0, 0),
+(22, 22, 1, 0, 0),
+(23, 23, 1, 0, 0),
+(24, 24, 1, 0, 0),
+(25, 25, 1, 0, 0),
+(26, 26, 1, 0, 0),
+(27, 27, 1, 0, 0),
+(28, 1, 3, 0, 0),
+(29, 2, 3, 0, 0),
+(30, 3, 3, 0, 0),
+(31, 4, 3, 0, 0),
+(32, 5, 3, 0, 0),
+(33, 6, 3, 0, 0),
+(34, 7, 3, 0, 0),
+(35, 8, 3, 0, 0),
+(36, 30, 3, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -82,15 +92,17 @@ CREATE TABLE `demand` (
   `group_size` int DEFAULT NULL,
   `vote_size` int DEFAULT NULL,
   `istreated` tinyint(1) DEFAULT '0',
-  `repartition_score` float DEFAULT NULL
+  `repartition_score` float DEFAULT NULL,
+  `demand_name` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `demand`
 --
 
-INSERT INTO `demand` (`id_demand`, `id_user`, `date_start`, `date_finish`, `ispublic`, `group_size`, `vote_size`, `istreated`, `repartition_score`) VALUES
-(1, 21, '2025-05-27 10:00:00', '2025-05-28 17:00:00', 0, 3, 5, 1, 100);
+INSERT INTO `demand` (`id_demand`, `id_user`, `date_start`, `date_finish`, `ispublic`, `group_size`, `vote_size`, `istreated`, `repartition_score`, `demand_name`) VALUES
+(1, 21, '2025-05-27 10:00:00', '2025-05-28 17:00:00', 0, 3, 5, 1, 100, 'finaltest'),
+(3, 29, '2025-05-28 12:29:00', '2025-05-29 12:27:00', 0, 3, NULL, 0, NULL, 'eval');
 
 -- --------------------------------------------------------
 
@@ -165,34 +177,36 @@ CREATE TABLE `user` (
 --
 
 INSERT INTO `user` (`id_user`, `lastname`, `firstname`, `password`, `class`, `role`, `email`) VALUES
-(1, 'AKIL', 'Wael', 'password123', 'sdn', 'student', 'wael.akil@lacatholille.fr'),
-(2, 'ALI-LIGALI', 'Mohammed Amir Kolawolé', 'password123', 'sdn', 'student', 'mohammed.ali-ligali@lacatholille.fr'),
-(3, 'BCHOUTY', 'Léa', 'password123', 'sdn', 'student', 'lea.bchouty@lacatholille.fr'),
-(4, 'BENMAMMAR', 'Thanina', 'password123', 'sdn', 'student', 'thanina.benmammar@lacatholille.fr'),
-(5, 'DEJONGE', 'Satya', 'password123', 'sdn', 'student', 'satya.dejonge@lacatholille.fr'),
-(6, 'DELEBECQUE', 'Jade', 'password123', 'sdn', 'student', 'jade.delebecque@lacatholille.fr'),
-(7, 'GHOUL', 'Massinissa', 'password123', 'sdn', 'student', 'massinissa.ghoul@lacatholille.fr'),
-(8, 'GIAMI', 'Candice', 'password123', 'sdn', 'student', 'candice.giami@lacatholille.fr'),
-(9, 'GUILLEMET', 'Steven', 'password123', 'sdn', 'student', 'steven.guillemet@lacatholille.fr'),
-(10, 'HAIFA', 'Joe', 'password123', 'sdn', 'student', 'joe.haifa@lacatholille.fr'),
-(11, 'HEBBINCKUYS', 'Hugo', 'password123', 'sdn', 'student', 'hugo.hebbinckuys@lacatholille.fr'),
-(12, 'HUGUET', 'Tom', 'password123', 'sdn', 'student', 'tom.huguet@lacatholille.fr'),
-(13, 'IACOPINO', 'Charles', 'password123', 'sdn', 'student', 'charles.iacopino@lacatholille.fr'),
-(14, 'KILITO', 'Yazid', 'password123', 'sdn', 'student', 'yazid.kilito@lacatholille.fr'),
-(15, 'LANCEA', 'Mathéo', 'password123', 'sdn', 'student', 'matheo.lancea@lacatholille.fr'),
-(16, 'LAURENCY', 'Yuna', 'password123', 'sdn', 'student', 'yuna.laurency@lacatholille.fr'),
-(17, 'LEKHAL', 'Samy', 'password123', 'sdn', 'student', 'samy.lekhal@lacatholille.fr'),
-(18, 'MARTIN', 'Maxence', 'password123', 'sdn', 'student', 'maxence.martin@lacatholille.fr'),
-(19, 'MAZOUZ', 'Aymène', 'password123', 'sdn', 'student', 'aymene.mazouz@lacatholille.fr'),
-(20, 'MEZOUÂR', 'Chahinez', 'password123', 'sdn', 'student', 'chahinez.mezouar@lacatholille.fr'),
-(21, 'MOUSSAOUI', 'Yasmina', 'password123', 'sdn', 'student', 'yasmina.moussaoui@lacatholille.fr'),
-(22, 'OKINDA', 'Carlos', 'password123', 'sdn', 'student', 'carlos.okinda@lacatholille.fr'),
-(23, 'POLLOCK', 'Toby', 'password123', 'sdn', 'student', 'toby.pollock@lacatholille.fr'),
-(24, 'SEBAOUI', 'Reda', 'password123', 'sdn', 'student', 'reda.sebaoui@lacatholille.fr'),
-(25, 'STIEVENARD', 'Emma', 'password123', 'sdn', 'student', 'emma.stievenard@lacatholille.fr'),
-(26, 'SZEWCZYK', 'Clément', 'password123', 'sdn', 'student', 'clement.szewczyk@lacatholille.fr'),
-(27, 'VANDAMME', 'Nathan', 'password123', 'sdn', 'student', 'nathan.vandamme@lacatholille.fr'),
-(28, 'MOUSIN', 'Lucien', 'FF14', NULL, 'teacher', 'lucien.mousin@lacatholille.fr');
+(1, 'AKIL', 'Wael', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'wael.akil@lacatholille.fr'),
+(2, 'ALI-LIGALI', 'Mohammed Amir Kolawolé', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'mohammed.ali-ligali@lacatholille.fr'),
+(3, 'BCHOUTY', 'Léa', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'lea.bchouty@lacatholille.fr'),
+(4, 'BENMAMMAR', 'Thanina', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'thanina.benmammar@lacatholille.fr'),
+(5, 'DEJONGE', 'Satya', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'satya.dejonge@lacatholille.fr'),
+(6, 'DELEBECQUE', 'Jade', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'jade.delebecque@lacatholille.fr'),
+(7, 'GHOUL', 'Massinissa', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'massinissa.ghoul@lacatholille.fr'),
+(8, 'GIAMI', 'Candice', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'candice.giami@lacatholille.fr'),
+(9, 'GUILLEMET', 'Steven', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'steven.guillemet@lacatholille.fr'),
+(10, 'HAIFA', 'Joe', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'joe.haifa@lacatholille.fr'),
+(11, 'HEBBINCKUYS', 'Hugo', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'hugo.hebbinckuys@lacatholille.fr'),
+(12, 'HUGUET', 'Tom', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'tom.huguet@lacatholille.fr'),
+(13, 'IACOPINO', 'Charles', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'charles.iacopino@lacatholille.fr'),
+(14, 'KILITO', 'Yazid', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'yazid.kilito@lacatholille.fr'),
+(15, 'LANCEA', 'Mathéo', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'matheo.lancea@lacatholille.fr'),
+(16, 'LAURENCY', 'Yuna', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'yuna.laurency@lacatholille.fr'),
+(17, 'LEKHAL', 'Samy', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'samy.lekhal@lacatholille.fr'),
+(18, 'MARTIN', 'Maxence', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'maxence.martin@lacatholille.fr'),
+(19, 'MAZOUZ', 'Aymène', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'aymene.mazouz@lacatholille.fr'),
+(20, 'MEZOUÂR', 'Chahinez', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'chahinez.mezouar@lacatholille.fr'),
+(21, 'MOUSSAOUI', 'Yasmina', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'yasmina.moussaoui@lacatholille.fr'),
+(22, 'OKINDA', 'Carlos', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'carlos.okinda@lacatholille.fr'),
+(23, 'POLLOCK', 'Toby', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'toby.pollock@lacatholille.fr'),
+(24, 'SEBAOUI', 'Reda', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'reda.sebaoui@lacatholille.fr'),
+(25, 'STIEVENARD', 'Emma', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'emma.stievenard@lacatholille.fr'),
+(26, 'SZEWCZYK', 'Clément', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'clement.szewczyk@lacatholille.fr'),
+(27, 'VANDAMME', 'Nathan', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'student', 'nathan.vandamme@lacatholille.fr'),
+(28, 'MOUSIN', 'Lucien', 'FF14', NULL, 'teacher', 'lucien.mousin@lacatholille.fr'),
+(29, 'sebaaoui', 'Reda', '$2y$10$2cskNdBbGxmeTCBpABo0mOW5IXijtkzcXAbfT2mewTxqlCe20cI96', 'sdn', 'teacher', 'reda@gmail.com'),
+(30, 'steve', 'steve', '$2y$10$sqlF2.R3zXvSBqHQiD860OX1UXMrocKFghsxBH1KI2QRbth9ST4we', 'sdn', 'student', 'steve@gmail.com');
 
 -- --------------------------------------------------------
 
@@ -407,13 +421,13 @@ ALTER TABLE `user_answer`
 -- AUTO_INCREMENT for table `answer_student`
 --
 ALTER TABLE `answer_student`
-  MODIFY `id_answer` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id_answer` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `demand`
 --
 ALTER TABLE `demand`
-  MODIFY `id_demand` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_demand` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `group`
@@ -431,7 +445,7 @@ ALTER TABLE `group_user`
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `id_user` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id_user` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `user_answer`
