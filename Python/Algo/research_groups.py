@@ -2,426 +2,542 @@ from typing import List, Dict, Tuple
 import random
 import copy
 import math
+import numpy as np
 from .onegroup import onegroup
 from .group_generation import group_generation
 
-class research_groups():
-    def __init__(self, group_size : int, dico_choices :  Dict[int, List[int]], max_iter=1000, patience=100, epsilon=0.01, threshold_var=0.01,
-                 alpha=1.0, beta=1.0, T0=2.0, cooling_rate=0.995):
+class research_groups:
+    """
+    Optimizes student group formation using simulated annealing to maximize intra-group affinity
+    while maintaining balanced inter-group variance. Improved version that better handles
+    unidirectional vs bidirectional relationships.
+    """
+    
+    def __init__(self, group_size: int, dico_choices: Dict[int, List[int]], 
+                 max_iter: int = 1000, patience: int = 100, 
+                 alpha: float = 1.0, beta: float = 0.5, 
+                 initial_temp: float = 10.0, cooling_rate: float = 0.995,
+                 mutual_bonus: float = 1.5, unidirectional_penalty: float = 0.7):
         """
-        Initializes the research groups with a specified group size and a dictionary of student choices.
+        Initialize the group optimizer.
         
-        Parameters:
-        - group_size: Size of each group
-        - dico_choices: Dictionary of student preferences
-        - max_iter: Maximum number of iterations
-        - patience: Number of iterations without improvement before stopping
-        - epsilon: Minimum improvement threshold for accepting swaps
-        - alpha: Weight for intra-group variance (higher = more important)
-        - beta: Weight for inter-group variance (higher = more important)
-        - T0: Initial temperature for simulated annealing
-        - cooling_rate: Rate at which temperature decreases
+        Args:
+            group_size: Number of students per group
+            dico_choices: Dictionary mapping student_id -> {other_student_id: affinity_score}
+            max_iter: Maximum optimization iterations
+            patience: Stop if no improvement for this many iterations
+            alpha: Weight for maximizing intra-group affinity (higher = more important)
+            beta: Weight for minimizing inter-group variance (higher = more important)
+            initial_temp: Starting temperature for simulated annealing
+            cooling_rate: Temperature decay rate per iteration
+            mutual_bonus: Multiplier for bidirectional relationships (default 1.5)
+            unidirectional_penalty: Multiplier for unidirectional relationships (default 0.7)
         """
         self.group_size = group_size
         self.dico_choices = dico_choices
         self.max_iter = max_iter
         self.patience = patience
-        self.epsilon = epsilon
-        self.threshold_var = threshold_var
         self.alpha = alpha
         self.beta = beta
-        self.T0 = T0
-        self.current_temp = self.T0
+        self.temperature = initial_temp
         self.cooling_rate = cooling_rate
+        self.mutual_bonus = mutual_bonus
+        self.unidirectional_penalty = unidirectional_penalty
         
-        # Generate the affinity matrix and the groups
+        # Validate inputs
         if not isinstance(dico_choices, dict):
-            raise TypeError("dico_choices must be a dictionary.")
-            
+            raise TypeError("dico_choices must be a dictionary")
+        
+        num_students = len(dico_choices)
+        if num_students % group_size != 0:
+            raise ValueError(f"Number of students ({num_students}) must be divisible by group size ({group_size})")
+        
+        # Initialize group generation
         self.group_gen = group_generation(group_size, dico_choices)
         self.affinity_matrix = self.group_gen.affinity_matrix
-        self.list_of_groups = self.group_gen.list_of_groups
-        self.dict_of_groups = self.group_gen.dict_of_groups
-        self.score = self.group_gen.get_score(self.alpha, self.beta)
-        self.isFinalGroups = False
-        self.final_affinity = 0.0
-        self.final_dict_of_groups = None
-        self.final_list_of_groups = None
         
-        # Statistics tracking
-        self.iteration_stats = []
-        self.best_score_history = []
+        # Current state
+        self.current_groups = self.group_gen.get_dict_of_groups()
+        self.current_score = self._calculate_score(self.current_groups)
         
-    def get_final_groups(self) -> Dict[int, List[int]]:
-        """Returns the final groups after optimization."""
-        if not self.isFinalGroups:
-            raise ValueError("The optimization process has not been completed yet.")
-        return self.final_dict_of_groups
+        # Best state tracking
+        self.best_groups = copy.deepcopy(self.current_groups)
+        self.best_score = self.current_score
+        
+        # Optimization completed flag
+        self.is_optimized = False
+        
+        print(f"Initialized with {num_students} students in {len(self.current_groups)} groups")
+        print(f"Initial score: {self.current_score:.4f}")
+        print(f"Mutual bonus: {mutual_bonus}, Unidirectional penalty: {unidirectional_penalty}")
     
-    def test_swap(self, student1: int, group1_id: int, student2: int, group2_id: int) -> float:
+    def _get_improved_mutual_affinity(self, s1: int, s2: int) -> float:
         """
-        Tests a swap between two students without actually performing it.
-        Returns the score improvement (positive = better, negative = worse).
-        """
-        # Current score
-        old_score = self.score
+        Calculate mutual affinity between two students with improved logic:
+        - Bidirectional relationships get a bonus
+        - Unidirectional relationships get a penalty
+        - No relationship gets zero score
         
-        # Create temporary copies
-        temp_group_gen = copy.deepcopy(self.group_gen)
-        temp_dict = copy.deepcopy(self.dict_of_groups)
-        
-        # Perform temporary swap
-        temp_dict[group1_id].remove(student1)
-        temp_dict[group1_id].append(student2)
-        temp_dict[group2_id].remove(student2)
-        temp_dict[group2_id].append(student1)
-        
-        # Update the temporary group_gen with new groups
-        temp_group_gen.change_new_groups(temp_dict)
-        
-        # Calculate new score
-        new_score = temp_group_gen.get_score(self.alpha, self.beta)
-        
-        # Return improvement (positive = better, negative = worse)
-        return old_score - new_score
-
-    def do_swap(self, student1: int, group1_id: int, student2: int, group2_id: int):
-        """
-        Actually performs the swap between two students and updates all data structures.
-        """
-        # Update group dictionary
-        self.dict_of_groups[group1_id].remove(student1)
-        self.dict_of_groups[group1_id].append(student2)
-        self.dict_of_groups[group2_id].remove(student2)
-        self.dict_of_groups[group2_id].append(student1)
-        
-        # Update all structures
-        self.group_gen.change_new_groups(self.dict_of_groups)
-        self.list_of_groups = self.group_gen.get_list_of_groups()
-        self.score = self.group_gen.get_score(self.alpha, self.beta)
-
-    def controlled_swap(self) -> Tuple[bool, float]:
-        """
-        Performs a controlled swap: takes the worst student from the worst group
-        and tests swaps with other groups.
-        Returns (swap_performed, improvement).
-        """
-        # Identify worst group and worst student
-        worst_group_id = self.group_gen.identify_weak_group()
-        if worst_group_id is None:
-            return False, 0.0
+        Args:
+            s1: First student ID
+            s2: Second student ID
             
-        worst_group = next(g for g in self.list_of_groups if g.id_group == worst_group_id)
-        worst_student = worst_group.identify_weak_student()
+        Returns:
+            Weighted mutual affinity score
+        """
+        # Get raw affinity scores (note: matrix uses 0-based indexing)
+        affinity_s1_to_s2 = self.affinity_matrix.get_affinity(s1, s2)
+        affinity_s2_to_s1 = self.affinity_matrix.get_affinity(s2, s1)
         
-        # Get list of other groups
-        other_groups = [g for g in self.list_of_groups if g.id_group != worst_group_id]
+        # Check relationship type
+        has_s1_to_s2 = affinity_s1_to_s2 > 0
+        has_s2_to_s1 = affinity_s2_to_s1 > 0
         
-        # 60% of time: ordered by quality (worst to best), 40% random
-        if random.random() < 0.6:
-            avg_affinities = self.group_gen.list_of_average_affinities_group()
-            other_groups.sort(key=lambda g: avg_affinities[g.id_group])
+        if has_s1_to_s2 and has_s2_to_s1:
+            # Bidirectional relationship - apply bonus
+            base_score = (affinity_s1_to_s2 + affinity_s2_to_s1) / 2
+            return base_score * self.mutual_bonus
+        elif has_s1_to_s2 or has_s2_to_s1:
+            # Unidirectional relationship - apply penalty
+            base_score = max(affinity_s1_to_s2, affinity_s2_to_s1)
+            return base_score * self.unidirectional_penalty
         else:
-            random.shuffle(other_groups)
-        
-        best_improvement = -float('inf')
-        best_swap = None
-        
-        # Test swaps with each candidate group
-        for candidate_group in other_groups:
-            for candidate_student in candidate_group.content_group:
-                improvement = self.test_swap(worst_student, worst_group_id, 
-                                            candidate_student, candidate_group.id_group)
-                
-                if improvement > best_improvement:
-                    best_improvement = improvement
-                    best_swap = (worst_student, worst_group_id, candidate_student, candidate_group.id_group)
-        
-        # Decide if we accept the swap
-        if best_swap and self._accept_swap(best_improvement):
-            self.do_swap(*best_swap)
-            return True, best_improvement
-        
-        return False, 0.0
-
-    def random_swap(self) -> Tuple[bool, float]:
+            # No relationship
+            return 0.0
+    
+    def _calculate_score(self, groups_dict: Dict[int, List[int]]) -> float:
         """
-        Performs a random swap between two random students from different groups.
-        Returns (swap_performed, improvement).
-        """
-        # Choose two different groups randomly
-        group_ids = list(self.dict_of_groups.keys())
-        if len(group_ids) < 2:
-            return False, 0.0
+        Calculate the quality score for a group configuration using improved affinity calculation.
+        Lower scores are better.
+        
+        Score = -alpha * avg_intra_affinity + beta * inter_group_variance
+        
+        Args:
+            groups_dict: Dictionary mapping group_id -> list of student_ids
             
+        Returns:
+            Quality score (lower is better)
+        """
+        # Calculate metrics for each group
+        group_metrics = []
+        total_affinity = 0
+        total_pairs = 0
+        
+        for group_id, student_list in groups_dict.items():
+            # Calculate group affinity using improved method
+            group_affinity = 0
+            pair_count = 0
+            
+            for i in range(len(student_list)):
+                for j in range(i + 1, len(student_list)):
+                    s1, s2 = student_list[i], student_list[j]
+                    pair_affinity = self._get_improved_mutual_affinity(s1, s2)
+                    group_affinity += pair_affinity
+                    pair_count += 1
+            
+            avg_group_affinity = group_affinity / pair_count if pair_count > 0 else 0
+            group_metrics.append(avg_group_affinity)
+            total_affinity += group_affinity
+            total_pairs += pair_count
+        
+        # Calculate average intra-group affinity (higher is better)
+        avg_intra_affinity = total_affinity / total_pairs if total_pairs > 0 else 0
+        
+        # Calculate inter-group variance (lower is better)
+        overall_average = sum(group_metrics) / len(group_metrics) if group_metrics else 0
+        inter_group_variance = sum((avg - overall_average) ** 2 for avg in group_metrics) / len(group_metrics) if group_metrics else 0
+        
+        # Combined score (we want to maximize intra-affinity and minimize variance)
+        score = -self.alpha * avg_intra_affinity + self.beta * inter_group_variance
+        
+        return score
+    
+    def _get_random_student_pair(self) -> Tuple[int, int, int, int]:
+        """
+        Get two random students from different groups.
+        
+        Returns:
+            Tuple of (student1_id, group1_id, student2_id, group2_id)
+        """
+        # Get two different groups
+        group_ids = list(self.current_groups.keys())
         group1_id, group2_id = random.sample(group_ids, 2)
         
-        # Choose random student from each group
-        student1 = random.choice(self.dict_of_groups[group1_id])
-        student2 = random.choice(self.dict_of_groups[group2_id])
+        # Get random student from each group
+        student1_id = random.choice(self.current_groups[group1_id])
+        student2_id = random.choice(self.current_groups[group2_id])
         
-        # Test the swap
-        improvement = self.test_swap(student1, group1_id, student2, group2_id)
-        
-        # Decide if we accept the swap
-        if self._accept_swap(improvement):
-            self.do_swap(student1, group1_id, student2, group2_id)
-            return True, improvement
-        
-        return False, 0.0
-
-    def _accept_swap(self, improvement: float) -> bool:
+        return student1_id, group1_id, student2_id, group2_id
+    
+    def _get_strategic_student_pair(self) -> Tuple[int, int, int, int]:
         """
-        Decides whether to accept a swap based on improvement and simulated annealing probability.
+        Get a strategic student pair based on improved affinity calculation.
+        Focus on students with poor connections in their current groups.
+        
+        Returns:
+            Tuple of (student1_id, group1_id, student2_id, group2_id)
         """
-        # If improvement is significant, accept
-        if improvement > self.epsilon:
+        # Find the student with the worst average affinity in their current group
+        worst_student = None
+        worst_affinity = float('inf')
+        worst_group_id = None
+        
+        for group_id, student_list in self.current_groups.items():
+            for student in student_list:
+                # Calculate this student's average affinity with their groupmates
+                student_affinity = 0
+                count = 0
+                for other_student in student_list:
+                    if other_student != student:
+                        student_affinity += self._get_improved_mutual_affinity(student, other_student)
+                        count += 1
+                
+                avg_affinity = student_affinity / count if count > 0 else 0
+                
+                if avg_affinity < worst_affinity:
+                    worst_affinity = avg_affinity
+                    worst_student = student
+                    worst_group_id = group_id
+        
+        # Get random student from a different group
+        other_group_ids = [gid for gid in self.current_groups.keys() if gid != worst_group_id]
+        other_group_id = random.choice(other_group_ids)
+        other_student_id = random.choice(self.current_groups[other_group_id])
+        
+        return worst_student, worst_group_id, other_student_id, other_group_id
+    
+    def _test_swap(self, student1_id: int, group1_id: int, student2_id: int, group2_id: int) -> float:
+        """
+        Test a swap between two students and return the score change.
+        
+        Args:
+            student1_id: First student ID
+            group1_id: First student's current group ID
+            student2_id: Second student ID  
+            group2_id: Second student's current group ID
+            
+        Returns:
+            Score improvement (positive = better, negative = worse)
+        """
+        # Create temporary groups with the swap
+        temp_groups = copy.deepcopy(self.current_groups)
+        
+        # Perform the swap
+        temp_groups[group1_id].remove(student1_id)
+        temp_groups[group1_id].append(student2_id)
+        temp_groups[group2_id].remove(student2_id)
+        temp_groups[group2_id].append(student1_id)
+        
+        # Calculate new score
+        new_score = self._calculate_score(temp_groups)
+        
+        # Return improvement (current_score - new_score, so positive = improvement)
+        return self.current_score - new_score
+    
+    def _perform_swap(self, student1_id: int, group1_id: int, student2_id: int, group2_id: int):
+        """
+        Actually perform the swap between two students.
+        
+        Args:
+            student1_id: First student ID
+            group1_id: First student's current group ID
+            student2_id: Second student ID
+            group2_id: Second student's current group ID
+        """
+        # Update current groups
+        self.current_groups[group1_id].remove(student1_id)
+        self.current_groups[group1_id].append(student2_id)
+        self.current_groups[group2_id].remove(student2_id)
+        self.current_groups[group2_id].append(student1_id)
+        
+        # Update current score
+        self.current_score = self._calculate_score(self.current_groups)
+    
+    def _accept_change(self, improvement: float) -> bool:
+        """
+        Decide whether to accept a change based on improvement and temperature.
+        
+        Args:
+            improvement: Score improvement (positive = better)
+            
+        Returns:
+            True if change should be accepted
+        """
+        if improvement > 0:
             return True
         
-        # For negative improvements, use simulated annealing probability
-        if improvement < 0 and self.current_temp > 0:
-            probability = math.exp(improvement / self.current_temp)
-            return random.random() < probability
+        if self.temperature <= 0:
+            return False
         
-        # Small positive improvements are accepted with some probability
-        if 0 <= improvement <= self.epsilon and self.current_temp > 0:
-            probability = 0.3 * math.exp(improvement / self.current_temp)
-            return random.random() < probability
-        
-        return False
-
-    def multi_student_swap(self) -> Tuple[bool, float]:
-        """
-        Attempts to swap multiple students between groups for more complex reorganization.
-        """
-        if len(self.dict_of_groups) < 2:
-            return False, 0.0
-        
-        # Choose two groups
-        group_ids = random.sample(list(self.dict_of_groups.keys()), 2)
-        group1_id, group2_id = group_ids
-        
-        # Try swapping 2 students from each group
-        if len(self.dict_of_groups[group1_id]) >= 2 and len(self.dict_of_groups[group2_id]) >= 2:
-            students1 = random.sample(self.dict_of_groups[group1_id], 2)
-            students2 = random.sample(self.dict_of_groups[group2_id], 2)
-            
-            # Calculate combined improvement
-            total_improvement = 0
-            temp_dict = copy.deepcopy(self.dict_of_groups)
-            temp_group_gen = copy.deepcopy(self.group_gen)
-            
-            # Perform swaps
-            for s1, s2 in zip(students1, students2):
-                temp_dict[group1_id].remove(s1)
-                temp_dict[group1_id].append(s2)
-                temp_dict[group2_id].remove(s2)
-                temp_dict[group2_id].append(s1)
-            
-            temp_group_gen.change_new_groups(temp_dict)
-            new_score = temp_group_gen.get_score(self.alpha, self.beta)
-            total_improvement = self.score - new_score
-            
-            if self._accept_swap(total_improvement):
-                # Perform actual swaps
-                for s1, s2 in zip(students1, students2):
-                    self.dict_of_groups[group1_id].remove(s1)
-                    self.dict_of_groups[group1_id].append(s2)
-                    self.dict_of_groups[group2_id].remove(s2)
-                    self.dict_of_groups[group2_id].append(s1)
-                
-                self.group_gen.change_new_groups(self.dict_of_groups)
-                self.list_of_groups = self.group_gen.get_list_of_groups()
-                self.score = self.group_gen.get_score(self.alpha, self.beta)
-                return True, total_improvement
-        
-        return False, 0.0
-
+        # Simulated annealing: accept bad moves with decreasing probability
+        probability = math.exp(improvement / self.temperature)
+        return random.random() < probability
+    
     def optimize_groups(self) -> Dict[int, List[int]]:
         """
-        Main optimization method using enhanced simulated annealing with multiple swap strategies.
-        """
-        print("Starting group optimization...")
-        print(f"Initial score: {self.score:.4f}")
+        Main optimization loop using simulated annealing.
         
-        best_score = self.score
-        best_groups = copy.deepcopy(self.dict_of_groups)
-        current_score = best_score
+        Returns:
+            Dictionary of optimized groups {group_id: [student_ids]}
+        """
+        print("Starting optimization...")
         
         iterations_without_improvement = 0
-        swap_counts = {'controlled': 0, 'random': 0, 'multi': 0}
-        improvement_counts = {'controlled': 0, 'random': 0, 'multi': 0}
+        strategic_swaps = 0
+        random_swaps = 0
+        accepted_swaps = 0
         
         for iteration in range(self.max_iter):
-            # Choose swap strategy with adaptive probabilities
-            rand_val = random.random()
-            swap_performed = False
-            improvement = 0.0
-            swap_type = ""
+            # Choose swap strategy (70% strategic, 30% random)
+            if random.random() < 0.7:
+                student1_id, group1_id, student2_id, group2_id = self._get_strategic_student_pair()
+                strategic_swaps += 1
+            else:
+                student1_id, group1_id, student2_id, group2_id = self._get_random_student_pair()
+                random_swaps += 1
             
-            if rand_val < 0.5:  # 50% controlled swap
-                swap_performed, improvement = self.controlled_swap()
-                swap_type = 'controlled'
-            elif rand_val < 0.85:  # 35% random swap
-                swap_performed, improvement = self.random_swap()
-                swap_type = 'random'
-            else:  # 15% multi-student swap
-                swap_performed, improvement = self.multi_student_swap()
-                swap_type = 'multi'
+            # Test the swap
+            improvement = self._test_swap(student1_id, group1_id, student2_id, group2_id)
             
-            # Update statistics
-            if swap_performed:
-                swap_counts[swap_type] += 1
-                if improvement > 0:
-                    improvement_counts[swap_type] += 1
+            # Decide whether to accept
+            if self._accept_change(improvement):
+                self._perform_swap(student1_id, group1_id, student2_id, group2_id)
+                accepted_swaps += 1
                 
-                current_score = self.score
-                
-                # Check if it's the best score found
-                if current_score < best_score:
-                    best_score = current_score
-                    best_groups = copy.deepcopy(self.dict_of_groups)
+                # Check if this is the best configuration so far
+                if self.current_score < self.best_score:
+                    self.best_score = self.current_score
+                    self.best_groups = copy.deepcopy(self.current_groups)
                     iterations_without_improvement = 0
-                    print(f"Iteration {iteration}: New best score = {best_score:.4f} (improvement: {improvement:.4f}) [{swap_type}]")
-                    self.best_score_history.append((iteration, best_score))
+                    print(f"Iteration {iteration}: New best score = {self.best_score:.4f} "
+                          f"(improvement: {improvement:.4f})")
                 else:
                     iterations_without_improvement += 1
             else:
                 iterations_without_improvement += 1
             
-            # Adaptive cooling with occasional reheating
-            self.current_temp *= self.cooling_rate
-            if iteration % 200 == 0 and iteration > 0:
-                self.current_temp = max(self.current_temp, self.T0 * 0.1)  # Reheat slightly
-            
-            # Stop criteria
-            if iterations_without_improvement >= self.patience:
-                print(f"Stopping: No improvement for {self.patience} iterations")
-                break
+            # Cool down temperature
+            self.temperature *= self.cooling_rate
             
             # Progress reporting
-            if iteration % 100 == 0 and iteration > 0:
-                print(f"Iteration {iteration}: Current = {current_score:.4f}, Best = {best_score:.4f}, Temp = {self.current_temp:.6f}")
-                print(f"  Swaps - Controlled: {swap_counts['controlled']}/{improvement_counts['controlled']}, "
-                      f"Random: {swap_counts['random']}/{improvement_counts['random']}, "
-                      f"Multi: {swap_counts['multi']}/{improvement_counts['multi']}")
+            if iteration % 200 == 0 and iteration > 0:
+                print(f"Iteration {iteration}: Current = {self.current_score:.4f}, "
+                      f"Best = {self.best_score:.4f}, Temp = {self.temperature:.4f}")
+                print(f"  Strategic swaps: {strategic_swaps}, Random swaps: {random_swaps}, "
+                      f"Accepted: {accepted_swaps}")
+            
+            # Early stopping
+            if iterations_without_improvement >= self.patience:
+                print(f"Stopping early: No improvement for {self.patience} iterations")
+                break
         
         # Restore best configuration
-        self.dict_of_groups = best_groups
-        self._rebuild_groups_from_dict()
-        self.score = self.group_gen.get_score(self.alpha, self.beta)
+        self.current_groups = copy.deepcopy(self.best_groups)
+        self.current_score = self.best_score
+        self.is_optimized = True
         
-        # Mark as finalized
-        self.isFinalGroups = True
-        self.final_affinity = self.score
-        self.final_dict_of_groups = copy.deepcopy(self.dict_of_groups)
-        self.final_list_of_groups = copy.deepcopy(self.list_of_groups)
+        print(f"\nOptimization completed!")
+        print(f"Final score: {self.best_score:.4f}")
+        print(f"Total swaps attempted: {strategic_swaps + random_swaps}")
+        print(f"Swaps accepted: {accepted_swaps} ({100*accepted_swaps/(strategic_swaps + random_swaps):.1f}%)")
         
-        print(f"\nOptimization completed. Final score: {self.score:.4f}")
-        print(f"Total improvement: {current_score - best_score:.4f}")
-        print(f"Swap statistics:")
-        for swap_type, count in swap_counts.items():
-            success_rate = improvement_counts[swap_type] / max(count, 1) * 100
-            print(f"  {swap_type.capitalize()}: {count} attempts, {improvement_counts[swap_type]} improvements ({success_rate:.1f}%)")
+        return self.best_groups
+    
+    def get_final_groups(self) -> Dict[int, List[int]]:
+        """
+        Get the final optimized groups.
         
-        return self.dict_of_groups
-
-    def _rebuild_groups_from_dict(self):
+        Returns:
+            Dictionary of final groups {group_id: [student_ids]}
+            
+        Raises:
+            ValueError: If optimization hasn't been run yet
         """
-        Rebuilds the list of group objects from the dictionary of groups.
+        if not self.is_optimized:
+            raise ValueError("Must run optimize_groups() first")
+        return copy.deepcopy(self.best_groups)
+    
+    def get_final_score(self) -> float:
         """
-        self.list_of_groups = []
-        for id_group, content_group in self.dict_of_groups.items():
-            self.list_of_groups.append(onegroup(id_group, content_group, self.affinity_matrix))
+        Get the final optimization score.
         
-        self.group_gen.dict_of_groups = self.dict_of_groups
-        self.group_gen.list_of_groups = self.list_of_groups
-
-    def print_final_statistics(self):
+        Returns:
+            Final score (lower is better)
+            
+        Raises:
+            ValueError: If optimization hasn't been run yet
         """
-        Prints detailed statistics about the final group configuration.
+        if not self.is_optimized:
+            raise ValueError("Must run optimize_groups() first")
+        return self.best_score
+    
+    def analyze_relationships(self) -> Dict[str, int]:
         """
-        if not self.isFinalGroups:
+        Analyze the types of relationships in the affinity matrix.
+        
+        Returns:
+            Dictionary with counts of bidirectional, unidirectional, and no relationships
+        """
+        bidirectional = 0
+        unidirectional = 0
+        no_relationship = 0
+        
+        students = list(self.dico_choices.keys())
+        
+        for i, s1 in enumerate(students):
+            for s2 in students[i+1:]:
+                affinity_s1_to_s2 = self.affinity_matrix.get_affinity(s1, s2)
+                affinity_s2_to_s1 = self.affinity_matrix.get_affinity(s2, s1)
+                
+                has_s1_to_s2 = affinity_s1_to_s2 > 0
+                has_s2_to_s1 = affinity_s2_to_s1 > 0
+                
+                if has_s1_to_s2 and has_s2_to_s1:
+                    bidirectional += 1
+                elif has_s1_to_s2 or has_s2_to_s1:
+                    unidirectional += 1
+                else:
+                    no_relationship += 1
+        
+        return {
+            'bidirectional': bidirectional,
+            'unidirectional': unidirectional,
+            'no_relationship': no_relationship
+        }
+    
+    def print_detailed_results(self):
+        """
+        Print detailed analysis of the final group configuration with relationship analysis.
+        """
+        if not self.is_optimized:
             print("Optimization not completed yet.")
             return
         
-        print("\n" + "="*50)
-        print("FINAL GROUP STATISTICS")
-        print("="*50)
-        print(f"Final Score: {self.final_affinity:.4f}")
-        print(f"Global Average Affinity: {self.group_gen.average_affinity_global():.2f}")
-        print(f"Inter-group Variance: {self.group_gen.variance_inter_group():.4f}")
+        print("\n" + "="*60)
+        print("RELATIONSHIP ANALYSIS")
+        print("="*60)
         
-        print("\nDetailed Group Analysis:")
-        avg_affinities = self.group_gen.list_of_average_affinities_group()
-        intra_variances = self.group_gen.list_of_variances_intra_group()
+        relationship_stats = self.analyze_relationships()
+        total_pairs = sum(relationship_stats.values())
         
-        for group_id in sorted(self.final_dict_of_groups.keys()):
-            students = self.final_dict_of_groups[group_id]
-            print(f"\nGroup {group_id}: {students}")
-            print(f"  Average Affinity: {avg_affinities[group_id]:.2f}")
-            print(f"  Intra Variance: {intra_variances[group_id]:.4f}")
+        print(f"Total student pairs: {total_pairs}")
+        print(f"Bidirectional relationships: {relationship_stats['bidirectional']} ({100*relationship_stats['bidirectional']/total_pairs:.1f}%)")
+        print(f"Unidirectional relationships: {relationship_stats['unidirectional']} ({100*relationship_stats['unidirectional']/total_pairs:.1f}%)")
+        print(f"No relationships: {relationship_stats['no_relationship']} ({100*relationship_stats['no_relationship']/total_pairs:.1f}%)")
+        
+        print("\n" + "="*60)
+        print("DETAILED GROUP ANALYSIS")
+        print("="*60)
+        
+        total_affinity = 0
+        total_pairs_in_groups = 0
+        group_affinities = []
+        
+        for group_id in sorted(self.best_groups.keys()):
+            student_list = self.best_groups[group_id]
             
-            # Show individual student affinities within group
-            group_obj = next(g for g in self.final_list_of_groups if g.id_group == group_id)
-            individual_affinities = group_obj.list_of_average_affinities()
-            print(f"  Individual affinities: {individual_affinities}")
+            # Calculate group affinity using improved method
+            group_affinity = 0
+            pair_count = 0
+            relationship_types = {'bidirectional': 0, 'unidirectional': 0, 'none': 0}
+            
+            print(f"\nGroup {group_id}: {student_list}")
+            
+            for i in range(len(student_list)):
+                for j in range(i + 1, len(student_list)):
+                    s1, s2 = student_list[i], student_list[j]
+                    
+                    # Analyze relationship type
+                    affinity_s1_to_s2 = self.affinity_matrix.get_affinity(s1, s2)
+                    affinity_s2_to_s1 = self.affinity_matrix.get_affinity(s2, s1)
+                    
+                    has_s1_to_s2 = affinity_s1_to_s2 > 0
+                    has_s2_to_s1 = affinity_s2_to_s1 > 0
+                    
+                    if has_s1_to_s2 and has_s2_to_s1:
+                        relationship_types['bidirectional'] += 1
+                        print(f"  {s1}↔{s2}: {affinity_s1_to_s2}↔{affinity_s2_to_s1} (bidirectional)")
+                    elif has_s1_to_s2 or has_s2_to_s1:
+                        relationship_types['unidirectional'] += 1
+                        if has_s1_to_s2:
+                            print(f"  {s1}→{s2}: {affinity_s1_to_s2} (unidirectional)")
+                        else:
+                            print(f"  {s2}→{s1}: {affinity_s2_to_s1} (unidirectional)")
+                    else:
+                        relationship_types['none'] += 1
+                        print(f"  {s1}—{s2}: no relationship")
+                    
+                    pair_affinity = self._get_improved_mutual_affinity(s1, s2)
+                    group_affinity += pair_affinity
+                    pair_count += 1
+            
+            avg_affinity = group_affinity / pair_count if pair_count > 0 else 0
+            
+            total_affinity += group_affinity
+            total_pairs_in_groups += pair_count
+            group_affinities.append(avg_affinity)
+            
+            print(f"  Average weighted affinity: {avg_affinity:.2f}")
+            print(f"  Total weighted affinity: {group_affinity:.0f}")
+            print(f"  Relationships: {relationship_types['bidirectional']} bidirectional, "
+                  f"{relationship_types['unidirectional']} unidirectional, "
+                  f"{relationship_types['none']} none")
+        
+        # Global statistics
+        overall_avg = total_affinity / total_pairs_in_groups if total_pairs_in_groups > 0 else 0
+        variance = sum((avg - overall_avg) ** 2 for avg in group_affinities) / len(group_affinities)
+        
+        print(f"\n" + "-"*40)
+        print("GLOBAL STATISTICS")
+        print("-"*40)
+        print(f"Overall average weighted affinity: {overall_avg:.2f}")
+        print(f"Inter-group variance: {variance:.4f}")
+        print(f"Total weighted affinity points: {total_affinity:.0f}")
+        print(f"Total student pairs in groups: {total_pairs_in_groups}")
+        print(f"Final optimization score: {self.best_score:.4f}")
+        print(f"Mutual bonus: {self.mutual_bonus}, Unidirectional penalty: {self.unidirectional_penalty}")
 
-    def debug_current_state(self):
-        """Debug method to print current state information."""
-        print(f"\nCurrent Score: {self.score:.4f}")
-        print(f"Current Temperature: {self.current_temp:.6f}")
-        print("Current Groups:")
-        for group_id, students in self.dict_of_groups.items():
-            group_obj = next(g for g in self.list_of_groups if g.id_group == group_id)
-            print(f"  Group {group_id}: {students} (avg affinity: {group_obj.average_affinity():.2f})")
 
-    def get_final_score(self) -> float:
-        """Returns the final score after optimization."""
-        if not self.isFinalGroups:
-            raise ValueError("The optimization process has not been completed yet.")
-        return self.score
-
-
-
-def generate_finals_groups(group_size: int, dico_choices: Dict[int, List[int]], max_iter=1000, patience=100, epsilon=0.01,
-                          alpha=1.0, beta=1.0, T0=2.0, cooling_rate=0.995) -> Dict[int, List[int]]:
+def generate_finals_groups(group_size: int, dico_choices: Dict[int, List[int]], 
+                          max_iter: int = 1000, patience: int = 100,
+                          alpha: float = 1.0, beta: float = 0.5,
+                          mutual_bonus: float = 1.5, unidirectional_penalty: float = 0.7) -> Tuple[Dict[int, List[int]], float]:
     """
-    Generates final groups using the research_groups optimizer.
+    Generate optimal student groups using simulated annealing with improved relationship handling.
     
-    Parameters:
-    - group_size: Size of each group
-    - dico_choices: Dictionary of student preferences
-    - max_iter: Maximum number of iterations
-    - patience: Number of iterations without improvement before stopping
-    - epsilon: Minimum improvement threshold for accepting swaps
-    - alpha: Weight for intra-group variance
-    - beta: Weight for inter-group variance
-    - T0: Initial temperature for simulated annealing
-    - cooling_rate: Rate at which temperature decreases
-    
+    Args:
+        group_size: Number of students per group
+        dico_choices: Dictionary mapping student_id -> {other_student_id: affinity_score}
+        max_iter: Maximum optimization iterations
+        patience: Stop if no improvement for this many iterations
+        alpha: Weight for maximizing intra-group affinity
+        beta: Weight for minimizing inter-group variance
+        mutual_bonus: Multiplier for bidirectional relationships (default 1.5)
+        unidirectional_penalty: Multiplier for unidirectional relationships (default 0.7)
+        
     Returns:
-    A dictionary of final groups.
+        Tuple of (final_groups_dict, final_score)
     """
     optimizer = research_groups(
         group_size=group_size,
         dico_choices=dico_choices,
         max_iter=max_iter,
         patience=patience,
-        epsilon=epsilon,
         alpha=alpha,
         beta=beta,
-        T0=T0,
-        cooling_rate=cooling_rate
+        mutual_bonus=mutual_bonus,
+        unidirectional_penalty=unidirectional_penalty
     )
     
     optimizer.optimize_groups()
+    optimizer.print_detailed_results()
+    
     return optimizer.get_final_groups(), optimizer.get_final_score()
 
 
-
-# Example usage with optimized parameters
+# Example usage
 if __name__ == "__main__":
+    # Test data with students numbered 1-12
     dico_choices = {
         1: {2: 30, 3: 40, 5: 30},
         2: {1: 25, 3: 25, 4: 25, 6: 25},
@@ -437,10 +553,17 @@ if __name__ == "__main__":
         12: {1: 26, 5: 24, 3: 25, 4: 25},
     }
     
-    a= generate_finals_groups(
+    print("Testing improved group optimization...")
+    final_groups, final_score = generate_finals_groups(
         group_size=3,
-        dico_choices=dico_choices
+        dico_choices=dico_choices,
+        max_iter=2000,
+        patience=200,
+        alpha=1.0,  # Prioritize high intra-group affinity
+        beta=0.3,   # Less weight on variance between groups
+        mutual_bonus=1.5,  # Bonus for mutual relationships
+        unidirectional_penalty=0.7  # Penalty for one-way relationships
     )
-
-    print(a[0])
-    print(a[1])
+    
+    print(f"\nFinal groups: {final_groups}")
+    print(f"Final score: {final_score:.4f}")

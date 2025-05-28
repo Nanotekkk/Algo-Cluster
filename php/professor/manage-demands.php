@@ -10,11 +10,61 @@ if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 
 require_once '../config/database.php';
 
-// Récupérer toutes les demandes du professeur
+$message = '';
+$error = '';
+
+// Gérer la génération des groupes
+if(isset($_POST['generate_groups']) && is_numeric($_POST['generate_groups'])) {
+    $id_demand = intval($_POST['generate_groups']);
+    
+    // Vérifier que la demande appartient au professeur et n'est pas déjà traitée
+    $stmt = $pdo->prepare("SELECT * FROM demand WHERE id_demand = ? AND id_user = ? AND istreated = 0");
+    $stmt->execute([$id_demand, $_SESSION['user_id']]);
+    $demand = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if($demand) {
+        // Vérifier que tous les étudiants ont répondu
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as total_students,
+                   COUNT(CASE WHEN as_answer = 1 THEN 1 END) as answered_students
+            FROM answer_student 
+            WHERE id_demand = ? AND ignore_student = 0
+        ");
+        $stmt->execute([$id_demand]);
+        $response_stats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if($response_stats['total_students'] > 0 && $response_stats['answered_students'] == $response_stats['total_students']) {
+            // Tous les étudiants ont répondu, lancer le script Python
+            $command = "python3 main.py " . escapeshellarg($id_demand) . " " . escapeshellarg($demand['group_size']) . " " . escapeshellarg($demand['vote_size']) . " 2>&1";
+            
+            // Exécuter le script Python
+            $output = shell_exec($command);
+            $return_code = 0;
+            
+            // Vérifier si le script s'est exécuté correctement
+            if($return_code === 0) {
+                // Marquer la demande comme traitée
+                $stmt = $pdo->prepare("UPDATE demand SET istreated = 1 WHERE id_demand = ?");
+                $stmt->execute([$id_demand]);
+                
+                $message = "Les groupes ont été générés avec succès !";
+            } else {
+                $error = "Erreur lors de la génération des groupes : " . $output;
+            }
+        } else {
+            $error = "Tous les étudiants n'ont pas encore répondu. (" . $response_stats['answered_students'] . "/" . $response_stats['total_students'] . " réponses)";
+        }
+    } else {
+        $error = "Demande introuvable ou déjà traitée.";
+    }
+}
+
+// Récupérer toutes les demandes du professeur avec les statistiques de réponses
 $stmt = $pdo->prepare("
     SELECT d.*, 
            (SELECT COUNT(*) FROM answer_student WHERE id_demand = d.id_demand) as nb_responses,
-           (SELECT COUNT(*) FROM answer_student WHERE id_demand = d.id_demand AND ignore_student = 0) as nb_active_responses
+           (SELECT COUNT(*) FROM answer_student WHERE id_demand = d.id_demand AND ignore_student = 0) as nb_active_responses,
+           (SELECT COUNT(*) FROM answer_student WHERE id_demand = d.id_demand AND ignore_student = 0 AND as_answer = 1) as nb_answered
     FROM demand d
     WHERE d.id_user = ?
     ORDER BY d.date_start DESC
@@ -119,6 +169,24 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
             background-color: #45a049;
         }
         
+        .message {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -158,6 +226,7 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         .actions {
             display: flex;
             gap: 0.5rem;
+            flex-wrap: wrap;
         }
         
         .btn {
@@ -166,6 +235,10 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
             border-radius: 4px;
             font-size: 0.875rem;
             transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+            text-align: center;
         }
         
         .btn-view {
@@ -204,6 +277,20 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
             background-color: #117a8b;
         }
         
+        .btn-generate {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-generate:hover {
+            background-color: #218838;
+        }
+        
+        .btn-generate:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 3rem;
@@ -233,6 +320,19 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
             background-color: #6c757d;
             color: white;
         }
+        
+        .response-stats {
+            font-size: 0.875rem;
+        }
+        
+        .response-complete {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .response-incomplete {
+            color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -248,6 +348,14 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         <div class="demands-container">
             <h2>Mes formulaires de création de groupes</h2>
             
+            <?php if($message): ?>
+                <div class="message success"><?php echo htmlspecialchars($message); ?></div>
+            <?php endif; ?>
+            
+            <?php if($error): ?>
+                <div class="message error"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
+            
             <a href="create-demand.php" class="add-btn">+ Créer un nouveau formulaire</a>
             
             <?php if(count($demands) > 0): ?>
@@ -255,6 +363,7 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Nom</th>
                             <th>Période</th>
                             <th>Taille groupe</th>
                             <th>Votes/étudiant</th>
@@ -280,9 +389,12 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
                                 $status = 'closed';
                                 $status_text = 'Terminé';
                             }
+                            
+                            $all_answered = ($demand['nb_active_responses'] > 0 && $demand['nb_answered'] == $demand['nb_active_responses']);
                         ?>
                             <tr>
                                 <td>#<?php echo $demand['id_demand']; ?></td>
+                                <td><?php echo htmlspecialchars($demand['demand_name']); ?></td>
                                 <td>
                                     Du <?php echo date('d/m/Y H:i', $start); ?><br>
                                     Au <?php echo date('d/m/Y H:i', $finish); ?>
@@ -294,7 +406,16 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
                                         <?php echo $demand['ispublic'] ? 'Public' : 'Privé'; ?>
                                     </span>
                                 </td>
-                                <td><?php echo $demand['nb_active_responses']; ?> / <?php echo $demand['nb_responses']; ?></td>
+                                <td>
+                                    <div class="response-stats <?php echo $all_answered ? 'response-complete' : 'response-incomplete'; ?>">
+                                        <?php echo $demand['nb_answered']; ?> / <?php echo $demand['nb_active_responses']; ?>
+                                        <?php if($all_answered): ?>
+                                            <br><small>✓ Complet</small>
+                                        <?php else: ?>
+                                            <br><small>En attente</small>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
                                 <td class="status-<?php echo $status; ?>"><?php echo $status_text; ?></td>
                                 <td>
                                     <div class="actions">
@@ -302,11 +423,22 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
                                         <?php if($status !== 'closed'): ?>
                                             <a href="edit-demand.php?id=<?php echo $demand['id_demand']; ?>" class="btn btn-edit">Modifier</a>
                                         <?php endif; ?>
+                                        
                                         <?php if($demand['istreated']): ?>
                                             <a href="view-groups.php?id=<?php echo $demand['id_demand']; ?>" class="btn btn-results">Groupes</a>
-                                        <?php elseif($status === 'closed'): ?>
-                                            <a href="generate-groups.php?id=<?php echo $demand['id_demand']; ?>" class="btn btn-results">Générer</a>
+                                        <?php elseif($status === 'closed' && $all_answered): ?>
+                                            <form method="POST" style="display: inline;">
+                                                <button type="submit" name="generate_groups" value="<?php echo $demand['id_demand']; ?>" 
+                                                        class="btn btn-generate" 
+                                                        onclick="return confirm('Êtes-vous sûr de vouloir générer les groupes ? Cette action est irréversible.');">
+                                                    Générer
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
+                                         <button class="btn btn-generate" disabled title="Tous les étudiants n'ont pas encore répondu">
+                                            Générer
+                                        </button>
+                                        
                                         <a href="manage-demands.php?delete=<?php echo $demand['id_demand']; ?>" 
                                            class="btn btn-delete" 
                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce formulaire ?');">Supprimer</a>
