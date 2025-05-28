@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 27, 2025 at 01:03 PM
+-- Generation Time: May 27, 2025 at 06:00 PM
 -- Server version: 8.0.30
 -- PHP Version: 8.3.2
 
@@ -112,7 +112,7 @@ CREATE TABLE `group` (
 
 CREATE TABLE `group_user` (
   `id_group_user` int NOT NULL,
-  `id_demand` int NOT NULL,
+  `id_group` int NOT NULL,
   `id_user` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -352,7 +352,7 @@ ALTER TABLE `group`
 --
 ALTER TABLE `group_user`
   ADD PRIMARY KEY (`id_group_user`),
-  ADD KEY `id_demand` (`id_demand`),
+  ADD KEY `id_group` (`id_group`),
   ADD KEY `id_user` (`id_user`);
 
 --
@@ -438,7 +438,7 @@ ALTER TABLE `group`
 -- Constraints for table `group_user`
 --
 ALTER TABLE `group_user`
-  ADD CONSTRAINT `group_user_ibfk_1` FOREIGN KEY (`id_demand`) REFERENCES `demand` (`id_demand`) ON DELETE CASCADE,
+  ADD CONSTRAINT `group_user_ibfk_1` FOREIGN KEY (`id_group`) REFERENCES `group` (`id_group`) ON DELETE CASCADE,
   ADD CONSTRAINT `group_user_ibfk_2` FOREIGN KEY (`id_user`) REFERENCES `user` (`id_user`) ON DELETE CASCADE;
 
 --
