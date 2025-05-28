@@ -283,8 +283,8 @@ if($role == 'student') {
                 <h2>Menu Professeur</h2>
                 <div class="menu-grid">
                     <a href="professor/create-demand.php" class="menu-item">Créer un formulaire</a>
-                    <a href="manage-demands.php" class="menu-item">Gérer mes formulaire</a>
-                    <a href="view-groups.php" class="menu-item">Voir les groupes formés</a>
+                    <a href="professor/manage-demands.php" class="menu-item">Gérer mes formulaire</a>
+                    <a href="professor/view-groups.php" class="menu-item">Voir les groupes formés</a>
                 </div>
             </div>
             

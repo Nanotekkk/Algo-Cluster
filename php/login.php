@@ -181,10 +181,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <button type="submit">Se connecter</button>
         </form>
-        <!--<div class="">
+        <div class="register-link"></div>
+            <p>Pas encore de compte ?</p>
             <p></p>
-            <a href="register.php" class="register-btn">s'</a>
-        </div>-->
+            <a href="register.php" class="register-btn">s'inscrire</a>
+        </div>
         
     </div>
 </body>
