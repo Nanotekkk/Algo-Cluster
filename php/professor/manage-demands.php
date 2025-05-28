@@ -435,7 +435,7 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-                                         <button class="btn btn-generate" disabled title="Tous les étudiants n'ont pas encore répondu">
+                                         <button class="btn btn-generate">
                                             Générer
                                         </button>
                                         
