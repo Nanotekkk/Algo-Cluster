@@ -215,9 +215,7 @@ if($role == 'student') {
                 <h2>Menu Étudiant</h2>
                 <div class="menu-grid">
                     <a href="vote.php" class="menu-item">Voter pour un groupe</a>
-                    <a href="my-groups.php" class="menu-item">Mes groupes</a>
-                    <a href="my-votes.php" class="menu-item">Mes votes</a>
-                    <a href="profile.php" class="menu-item">Mon profil</a>
+                    <a href="my-groups.php" class="menu-item">Mes groupes</a>                
                 </div>
             </div>
             
@@ -284,12 +282,9 @@ if($role == 'student') {
             <div class="menu">
                 <h2>Menu Professeur</h2>
                 <div class="menu-grid">
-                    <a href="create-demand.php" class="menu-item">Créer une demande</a>
-                    <a href="manage-demands.php" class="menu-item">Gérer mes demandes</a>
+                    <a href="professor/create-demand.php" class="menu-item">Créer un formulaire</a>
+                    <a href="manage-demands.php" class="menu-item">Gérer mes formulaire</a>
                     <a href="view-groups.php" class="menu-item">Voir les groupes formés</a>
-                    <a href="students-list.php" class="menu-item">Liste des étudiants</a>
-                    <a href="statistics.php" class="menu-item">Statistiques</a>
-                    <a href="profile.php" class="menu-item">Mon profil</a>
                 </div>
             </div>
             

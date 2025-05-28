@@ -34,3 +34,6 @@ files/
 # Dependencies (if using Composer later)
 vendor/
 composer.lock
+
+# python
+__pycache__/

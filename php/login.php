@@ -124,6 +124,40 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-bottom: 1rem;
             text-align: center;
         }
+        
+        .register-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .register-link a {
+            color: #4CAF50;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .register-btn {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.75rem 2rem;
+            background-color: #f8f9fa;
+            color: #333;
+            text-decoration: none;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            transition: all 0.3s;
+        }
+        
+        .register-btn:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +181,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <button type="submit">Se connecter</button>
         </form>
+        <div class="">
+            <p></p>
+            <a href="register.php" class="register-btn">s'</a>
+        </div>
+        
     </div>
 </body>
 </html>
