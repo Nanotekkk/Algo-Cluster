@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 27, 2025 at 06:00 PM
+-- Generation Time: May 28, 2025 at 07:17 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.3.2
 
@@ -90,7 +90,7 @@ CREATE TABLE `demand` (
 --
 
 INSERT INTO `demand` (`id_demand`, `id_user`, `date_start`, `date_finish`, `ispublic`, `group_size`, `vote_size`, `istreated`, `repartition_score`) VALUES
-(1, 21, '2025-05-27 10:00:00', '2025-05-28 17:00:00', 0, 3, 5, 0, NULL);
+(1, 21, '2025-05-27 10:00:00', '2025-05-28 17:00:00', 0, 3, 5, 1, 100);
 
 -- --------------------------------------------------------
 
@@ -104,6 +104,16 @@ CREATE TABLE `group` (
   `group_name` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- Dumping data for table `group`
+--
+
+INSERT INTO `group` (`id_group`, `id_demand`, `group_name`) VALUES
+(9, 1, '1'),
+(10, 1, '2'),
+(11, 1, '3'),
+(12, 1, '4');
+
 -- --------------------------------------------------------
 
 --
@@ -115,6 +125,24 @@ CREATE TABLE `group_user` (
   `id_group` int NOT NULL,
   `id_user` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `group_user`
+--
+
+INSERT INTO `group_user` (`id_group_user`, `id_group`, `id_user`) VALUES
+(25, 9, 1),
+(26, 9, 2),
+(27, 9, 3),
+(28, 10, 4),
+(29, 10, 5),
+(30, 10, 6),
+(31, 11, 7),
+(32, 11, 8),
+(33, 11, 9),
+(34, 12, 10),
+(35, 12, 11),
+(36, 12, 12);
 
 -- --------------------------------------------------------
 
@@ -391,13 +419,13 @@ ALTER TABLE `demand`
 -- AUTO_INCREMENT for table `group`
 --
 ALTER TABLE `group`
-  MODIFY `id_group` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id_group` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `group_user`
 --
 ALTER TABLE `group_user`
-  MODIFY `id_group_user` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id_group_user` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `user`
