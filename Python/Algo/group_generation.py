@@ -1,7 +1,7 @@
-from affinity import affinity_matrix
+from .affinity import affinity_matrix
 from typing import List, Dict
 from random import sample
-from onegroup import onegroup
+from .onegroup import onegroup
 
 dico_choices = {
     1: {2: 30, 3: 40, 5: 30},

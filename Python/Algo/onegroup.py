@@ -1,7 +1,5 @@
-import affinity
 from typing import List, Dict
-from random import sample
-from affinity import affinity_matrix
+from .affinity import affinity_matrix
 
 class onegroup():
     def __init__(self, id_group :int, content_group : List[int], affinity_matrix : affinity_matrix) -> None:

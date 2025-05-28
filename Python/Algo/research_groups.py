@@ -1,10 +1,9 @@
-from affinity import affinity_matrix
 from typing import List, Dict, Tuple
 import random
 import copy
 import math
-from onegroup import onegroup
-from group_generation import group_generation
+from .onegroup import onegroup
+from .group_generation import group_generation
 
 class research_groups():
     def __init__(self, group_size : int, dico_choices :  Dict[int, List[int]], max_iter=1000, patience=100, epsilon=0.01, threshold_var=0.01,

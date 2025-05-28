@@ -10,7 +10,7 @@ def sql_to_dict(id_demand):
         SELECT a.id_user, b.id_user2, b.Affinity
         FROM answer_student a 
         JOIN user_answer b ON b.id_answer = a.id_answer 
-        WHERE a.id_demand = %s AND a.ignore_student != 1 
+        WHERE a.id_demand = %s AND a.ignore_student != 1 AND a.as_answer = 1
         ORDER BY a.id_user ASC, b.affinity DESC
         """
         cursor.execute(query, (id_demand,))

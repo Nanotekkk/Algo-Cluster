@@ -4,6 +4,9 @@ def dict_to_SQL(id_demand, dictionnary, score):
     """
     Inserts a dictionary into the database.
     """
+
+    score = float(score)
+
     with get_db_connection() as (conn, cursor):
         conn.start_transaction()
         
