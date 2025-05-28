@@ -243,13 +243,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 
                 <div class="form-group">
-                    <div class="checkbox-group">
+                    <!--<div class="checkbox-group"> 
                         <input type="checkbox" id="ispublic" name="ispublic" 
                                <?php echo isset($_POST['ispublic']) ? 'checked' : ''; ?>>
                         <label for="ispublic">Formulaire public</label>
-                    </div>
+                    </div> 
                     <p class="help-text">Si coché, tous les étudiants peuvent participer. Sinon, vous devrez inviter manuellement les étudiants.</p>
-                </div>
+                </div>-->
                 
                 <button type="submit">Créer le formulaire</button>
             </form>

@@ -181,10 +181,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <button type="submit">Se connecter</button>
         </form>
-        <div class="">
+        <!--<div class="">
             <p></p>
             <a href="register.php" class="register-btn">s'</a>
-        </div>
+        </div>-->
         
     </div>
 </body>
