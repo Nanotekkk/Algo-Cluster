@@ -1,4 +1,4 @@
-<?php
+    <?php
 session_start();
 
 // Vérifier si l'utilisateur est connecté et est un professeur
