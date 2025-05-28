@@ -1,4 +1,4 @@
-from db import get_db_connection
+from SQL.DatabaseConnector import get_db_connection
 
 def sql_to_dict(id_demand):
     """

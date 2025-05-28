@@ -51,13 +51,44 @@ class group_generation():
         """
         return self.list_of_groups
     
+    def get_score(self, alpha : float, beta : float) -> float :
+        """Returns the score after changing groups, taking into account the total variance intra groups and inter groups"""
+        avg_intra_all_groups = sum([g.variance_intra_group() for g in self.list_of_groups])/len(self.list_of_groups)
+        return (alpha*avg_intra_all_groups + beta* self.variance_inter_group())
+    
+    def change_new_groups(self, new_groups: Dict[int, List[int]]) -> None:
+        """
+        Changes the current groups to a new set of groups.
+        :param new_groups: A dictionary where keys are group IDs and values are lists of student IDs in each group.
+        """
+        self.dict_of_groups = new_groups
+        self.list_of_groups = []
+        for id_group, content_group in new_groups.items():
+            self.list_of_groups.append(onegroup(id_group, content_group, self.affinity_matrix))
+        
+        
+    
     def get_dict_of_groups(self) -> Dict[int, List[int]]:
         """
         Returns the dictionary of group contents.
         :return: A dictionary where keys are group IDs and values are lists of student IDs in each group.
         """
         return self.dict_of_groups
-        
+
+    
+    def set_alpha(self, alpha: float) -> None:
+        """
+        Sets the weight for the intra-group variance in the score calculation.
+        :param alpha: The weight for intra-group variance.
+        """
+        self.alpha = alpha
+
+    def set_beta(self, beta: float) -> None:
+        """
+        Sets the weight for the inter-group variance in the score calculation.
+        :param beta: The weight for inter-group variance.
+        """
+        self.beta = beta
 
 
     def generate_random_groups(self) -> Dict[int, List[int]]:
@@ -139,10 +170,11 @@ class group_generation():
             return None
         return min(avg_affinities, key=avg_affinities.get)
     
+    
 
 
-g= group_generation(3
+"""g= group_generation(3
                     , dico_choices)
 print("List of groups instantiated:")
 for group_id, students in g.get_dict_of_groups().items():
-    print(f"Group {group_id}: {students}")
+    print(f"Group {group_id}: {students}")"""

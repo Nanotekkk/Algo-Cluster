@@ -22,13 +22,15 @@ try {
 }
 
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $demand_name = trim($_POST['demand_name'] ?? '');
     $date_start = $_POST['date_start'] ?? '';
     $date_finish = $_POST['date_finish'] ?? '';
     $group_size = intval($_POST['group_size'] ?? 0);
-    $ispublic = 0; // On force à privé, car sélection d'élèves
 
     // Validation
-    if(empty($date_start) || empty($date_finish)) {
+    if(empty($demand_name)) {
+        $error = "Le nom du formulaire est obligatoire";
+    } elseif(empty($date_start) || empty($date_finish)) {
         $error = "Les dates de début et de fin sont obligatoires";
     } elseif(strtotime($date_start) >= strtotime($date_finish)) {
         $error = "La date de fin doit être après la date de début";
@@ -36,23 +38,27 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "La date de début ne peut pas être dans le passé";  
     } elseif(!isset($_POST['students']) || !is_array($_POST['students']) || count($_POST['students']) == 0) {
         $error = "Veuillez sélectionner au moins un élève";
-    } else {
+    } elseif($group_size < 2 || $group_size > 10) {
+        $error = "La taille du groupe doit être comprise entre 2 et 10";
+    } elseif(count($_POST['students']) % $group_size != 0) {
+        $error = "Le nombre d'élèves sélectionnés doit être un multiple de la taille du groupe";
+    }
+     else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO demand (id_user, date_start, date_finish, ispublic, group_size, istreated) VALUES (?, ?, ?, ?, ?, 0)");
-            $stmt->execute([$_SESSION['user_id'], $date_start, $date_finish, $ispublic, $group_size]);
+            $stmt = $pdo->prepare("INSERT INTO demand (id_user, demand_name, date_start, date_finish, group_size) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$_SESSION['user_id'], $demand_name, $date_start, $date_finish, $group_size]);
             $demand_id = $pdo->lastInsertId();
 
             // Associer les élèves à la demande dans answer_student
-            $stmt = $pdo->prepare("INSERT INTO answer_student (id_demand, id_student) VALUES (?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO answer_student (id_demand, id_user) VALUES (?, ?)");
             foreach ($_POST['students'] as $student_id) {
                 $stmt->execute([$demand_id, $student_id]);
             }
 
             $success = "Formulaire créé avec succès!";
-            // header('Location: manage-demands.php');
             // exit();
         } catch(PDOException $e) {
-            $error = "Erreur lors de la création du formulaire";
+            $error = "Erreur lors de la création du formulaire: " . $e->getMessage();
         }
     }
 }
@@ -75,7 +81,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         h2 { margin-bottom: 2rem; color: #333; }
         .form-group { margin-bottom: 1.5rem; }
         label { display: block; margin-bottom: 0.5rem; color: #555; font-weight: bold; }
-        input[type="datetime-local"], input[type="number"], select { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        input[type="text"], input[type="datetime-local"], input[type="number"], select { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
         input[type="checkbox"] { margin-right: 0.5rem; }
         .checkbox-label { display: flex; align-items: center; }
         input:focus, select:focus { outline: none; border-color: #4CAF50; }
@@ -104,6 +110,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
             <form method="POST" action="">
+                <div class="form-group">
+                    <label for="demand_name">Nom du formulaire *</label>
+                    <input type="text" id="demand_name" name="demand_name" 
+                           value="<?php echo htmlspecialchars($_POST['demand_name'] ?? ''); ?>" 
+                           placeholder="Ex: Formation des groupes - Projet Web" required>
+                    <div class="help-text">Donnez un nom descriptif à votre formulaire</div>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label for="date_start">Date et heure de début *</label>
@@ -133,8 +147,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="students-list">
                         <?php foreach($students as $student): ?>
                             <div>
-                                <input type="checkbox" name="students[]" value="<?php echo $student['id']; ?>"
-                                    <?php echo (isset($_POST['students']) && in_array($student['id'], $_POST['students'])) ? 'checked' : ''; ?>>
+                                <input type="checkbox" name="students[]" value="<?php echo $student['id_user']; ?>"
+                                    <?php echo (isset($_POST['students']) && in_array($student['id_user'], $_POST['students'])) ? 'checked' : ''; ?>>
                                 <?php echo htmlspecialchars($student['firstname'] . ' ' . $student['lastname']); ?>
                             </div>
                         <?php endforeach; ?>
